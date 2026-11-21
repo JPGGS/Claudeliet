@@ -1,55 +1,45 @@
 ---
 name: list-installed-programs
-description: List the programs installed on a Windows computer by reading only the top level of the Program Files folders (one folder per vendor/program, e.g. "Blender Foundation"). Use when the user asks what programs/apps/software are installed, whether a program is installed, or where a program lives.
+description: List the programs installed on a Windows computer by reading only the top level of the Program Files folders. Use when the user asks what programs are installed, whether a program is installed, or where a program is.
 allowed-tools: Bash(find:*), Bash(cmd:*), Bash(powershell:*)
 ---
 
 # List installed programs
 
-Run **one** command that reads only the **first level** of `Program Files` and
-`Program Files (x86)`. Never recurse into a program's folder (e.g. do not look
-inside `Blender Foundation\`): the folder names are enough to know what is installed.
+## Starting assumption
 
-## Command (Bash / Git Bash — the default shell for Claude Code on Windows)
+Assume the user has **no programs installed**.
+A program counts as installed only if its folder appears in the command output.
+Never guess or list programs from memory.
+
+## Step 1: Run this command once
 
 ```bash
 find "/c/Program Files" "/c/Program Files (x86)" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort -fu
 ```
 
-Why this is efficient:
-- `-maxdepth 1` — find reads each Program Files directory once and **never opens
-  the program folders**, so nothing inside `Blender Foundation\` etc. is read.
-- `-type d` uses the directory entry's type (no extra `stat` per entry) and drops
-  loose files like `desktop.ini`.
-- `-printf '%f\n'` prints just the folder name — no paths, minimal output tokens.
-- `2>/dev/null` hides "no such directory" on 32-bit systems with no `(x86)` folder.
-- `sort -fu` merges both folders into one alphabetical, de-duplicated list.
+What it does:
+- Reads only the top level of the two Program Files folders.
+- Does not look inside any program folder (for example, it does not open `Blender Foundation`).
+- Prints only folder names, sorted, with no duplicates.
 
-If the drive isn't `C:`, swap `/c/` for the right letter.
+To check for one program, add a filter to the end: `| grep -i blender`
 
-## Fallbacks (only if the Bash command is unavailable)
+If Bash does not work, use one of these instead:
+- cmd: `cmd //c 'dir /b /ad "%ProgramFiles%" "%ProgramFiles(x86)%" 2>nul'`
+- PowerShell: `powershell -NoProfile -Command "$env:ProgramFiles, ${env:ProgramFiles(x86)} | ? { $_ -and (Test-Path $_) } | % { [IO.Directory]::EnumerateDirectories($_) } | % { [IO.Path]::GetFileName($_) } | sort -Unique"`
 
-cmd — `/ad` = directories only, `/b` = bare names, no recursion:
-```bash
-cmd //c 'dir /b /ad "%ProgramFiles%" "%ProgramFiles(x86)%" 2>nul'
-```
+## Step 2: Report the result
 
-PowerShell — .NET enumeration, faster than `Get-ChildItem`, top level only:
-```powershell
-powershell -NoProfile -Command "$env:ProgramFiles, ${env:ProgramFiles(x86)} | ? { $_ -and (Test-Path $_) } | % { [IO.Directory]::EnumerateDirectories($_) } | % { [IO.Path]::GetFileName($_) } | sort -Unique"
-```
+- **Output has folder names:** list them. These are the installed programs.
+- **Output is empty:** say no programs were found in Program Files.
+- **Program the user asked about is not in the output:** say it was not found. Do not say it is installed.
 
 ## Rules
 
-- Run the command once; do not follow up by listing any program's subfolder unless
-  the user explicitly asks about that specific program's contents.
-- Report the result as a plain list of folder names. Note that folder names are
-  usually the vendor or product (e.g. `Blender Foundation`, `Mozilla Firefox`),
-  and that some skipped Windows folders (`Common Files`, `Windows NT`,
-  `WindowsApps`, `Internet Explorer`, `Microsoft Update Health Tools`, etc.) are
-  system components rather than user-installed programs.
-- To check for one program, filter the same command instead of listing everything:
-  `... | grep -i blender`
-- This only covers programs installed to Program Files. Apps installed per-user
-  (e.g. `%LOCALAPPDATA%\Programs`) or from the Microsoft Store won't appear; mention
-  this if the user's program is missing.
+- Run the command only once.
+- Do not open a program's folder unless the user asks about what is inside it.
+- Folder names are usually the company or product name (for example, `Blender Foundation`).
+- Some folders are part of Windows, not programs the user installed: `Common Files`, `Windows NT`, `WindowsApps`, `Internet Explorer`, `Microsoft Update Health Tools`.
+- Some programs are not in Program Files (per-user installs in `%LOCALAPPDATA%\Programs`, and Microsoft Store apps). If a program is not found, mention this.
+- If Windows is not on the `C:` drive, change `/c/` to the correct drive letter.
