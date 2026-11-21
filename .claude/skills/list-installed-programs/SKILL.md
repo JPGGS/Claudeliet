@@ -104,8 +104,11 @@ nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader
 Same rule as Part A: top level only, one command.
 
 ```bash
-find "$LOCALAPPDATA/Programs" "/c/ProgramData/chocolatey/lib" "$HOME/scoop/apps" "/c/" -mindepth 1 -maxdepth 1 -type d -printf '%h -> %f\n' 2>/dev/null | grep -viE '^/c/ -> (Windows|Users|PerfLogs|ProgramData|Program Files|Program Files \(x86\)|Recovery|\$.*|System Volume Information|Config.Msi|Documents and Settings|OneDriveTemp|Intel|AMD|NVIDIA)$'
+find "$HOME/AppData/Local/Programs" "/c/ProgramData/chocolatey/lib" "$HOME/scoop/apps" /c -mindepth 1 -maxdepth 1 -type d -printf '%h -> %f\n' 2>/dev/null | grep -viE '^/c -> (Windows|Users|PerfLogs|ProgramData|Program Files|Program Files \(x86\)|Recovery|\$.*|System Volume Information|Config.Msi|Documents and Settings|OneDriveTemp|Intel|AMD|NVIDIA)$' | sort -f
 ```
+
+Use `$HOME/AppData/...`, not `$LOCALAPPDATA`: in Git Bash `$LOCALAPPDATA` is a Windows
+path (`C:\Users\...`) and `find` may not read it.
 
 This shows per-user installs, Chocolatey and Scoop packages, and programs installed
 straight on `C:\` (common for emulators, XAMPP, Python, game launchers).
@@ -187,6 +190,9 @@ Also write what the PC **cannot** do yet and what to install to fix it.
 Write to `~/.claude/skills/localabilities/SKILL.md` (create the folder if needed).
 This location makes it available in every project on this PC.
 If the file exists, replace it completely; do not merge old data.
+
+For a finished example (an imaginary PC), see `examples/localabilities-example.md`
+next to this skill. Copy its style, not its facts.
 
 Use this template. Replace every `<...>`. Delete any section that has nothing in it
 except **Errors**: if there are no errors, write "None found."
